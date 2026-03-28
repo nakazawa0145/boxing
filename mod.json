@@ -1,0 +1,18 @@
+{
+  "_QPVersion": "0.1.2",
+  "name": "BoxingMod",
+  "id": "BoxingMod",
+  "author": "BoxingMod",
+  "description": "Turns your sabers into boxing gloves and scores based on punch speed!",
+  "packageId": "com.beatgames.beatsaber",
+  "packageVersion": "1.37.0_9064817954",
+  "version": "1.0.0",
+  "modFiles": [
+    "libBoxingMod.so"
+  ],
+  "lateModFiles": [],
+  "libraryFiles": [],
+  "fileCopies": [],
+  "dependencies": [],
+  "modloader": "Scotland2"
+}
