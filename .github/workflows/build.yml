@@ -1,0 +1,79 @@
+name: Build BoxingMod
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+  workflow_dispatch:  # 手動実行ボタン
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      # ── 1. コードをチェックアウト ──────────────────────────────────────────
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      # ── 2. QPM をインストール ──────────────────────────────────────────────
+      - name: Install QPM
+        uses: nickmansrob/qpm-action@master
+        with:
+          workflow: main.yml
+
+      # ── 3. NDK を QPM で自動セットアップ ──────────────────────────────────
+      - name: Setup NDK via QPM
+        run: qpm ndk resolve -d
+
+      # ── 4. 依存関係を復元 ─────────────────────────────────────────────────
+      - name: QPM Restore
+        run: qpm restore
+
+      # ── 5. CMake + Ninja でビルド ─────────────────────────────────────────
+      - name: Install Ninja
+        run: sudo apt-get install -y ninja-build
+
+      - name: Configure CMake
+        run: |
+          cmake -B build -G Ninja \
+            -DCMAKE_BUILD_TYPE=RelWithDebInfo \
+            -DCMAKE_TOOLCHAIN_FILE="${ANDROID_NDK_HOME}/build/cmake/android.toolchain.cmake" \
+            -DANDROID_ABI=arm64-v8a \
+            -DANDROID_PLATFORM=android-29 \
+            -DANDROID_STL=c++_static \
+            -DMOD_ID="BoxingMod" \
+            -DVERSION="1.0.0"
+
+      - name: Build
+        run: cmake --build build --config RelWithDebInfo -j$(nproc)
+
+      # ── 6. QMOD パッケージを作成 ──────────────────────────────────────────
+      - name: Package QMOD
+        run: |
+          mkdir -p qmod_out
+          cp mod.json qmod_out/mod.json
+          cp build/libBoxingMod.so qmod_out/libBoxingMod.so
+          cd qmod_out
+          zip -j ../BoxingMod-1.0.0.qmod mod.json libBoxingMod.so
+          echo "=== QMOD contents ==="
+          unzip -l ../BoxingMod-1.0.0.qmod
+
+      # ── 7. Artifact としてアップロード ────────────────────────────────────
+      - name: Upload QMOD artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: BoxingMod-1.0.0.qmod
+          path: BoxingMod-1.0.0.qmod
+          if-no-files-found: error
+
+      # ── 8. (オプション) タグ push のときは GitHub Release も作成 ─────────
+      - name: Upload to GitHub Release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: BoxingMod-1.0.0.qmod
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
